@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 
 type ExpenseFormProps = {
   onCreated: () => Promise<void>;
@@ -10,6 +10,7 @@ const pendingKeyStorage = 'pendingExpenseKey';
 const pendingPayloadStorage = 'pendingExpensePayload';
 
 export default function ExpenseForm({ onCreated }: ExpenseFormProps) {
+  const formRef = useRef<HTMLFormElement>(null);
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState('');
   const [error, setError] = useState('');
@@ -44,13 +45,42 @@ export default function ExpenseForm({ onCreated }: ExpenseFormProps) {
     setError('');
     setLoading(true);
 
-    const formData = new FormData(event.currentTarget);
+    const form = formRef.current;
+    if (!form) {
+      setError('Form is not available. Please refresh the page.');
+      setLoading(false);
+      return;
+    }
+
+    const formData = new FormData(form);
     const payload = {
       amount: String(formData.get('amount') ?? ''),
       category: String(formData.get('category') ?? ''),
       description: String(formData.get('description') ?? ''),
       date: String(formData.get('date') ?? ''),
     };
+
+    const amountValue = Number(payload.amount);
+    if (!payload.amount || Number.isNaN(amountValue) || amountValue <= 0) {
+      setError('Please enter a positive amount.');
+      setLoading(false);
+      return;
+    }
+    if (!payload.category.trim()) {
+      setError('Please enter a category.');
+      setLoading(false);
+      return;
+    }
+    if (!payload.description.trim()) {
+      setError('Please enter a description.');
+      setLoading(false);
+      return;
+    }
+    if (!payload.date.trim()) {
+      setError('Please select a date.');
+      setLoading(false);
+      return;
+    }
 
     try {
       const idempotencyKey = getIdempotencyKey(payload);
@@ -68,7 +98,7 @@ export default function ExpenseForm({ onCreated }: ExpenseFormProps) {
       }
 
       clearPendingKey();
-      event.currentTarget.reset();
+      form.reset();
       setStatus('Expense saved.');
       await onCreated();
     } catch (err) {
@@ -79,7 +109,7 @@ export default function ExpenseForm({ onCreated }: ExpenseFormProps) {
   }
 
   return (
-    <form onSubmit={handleSubmit}>
+    <form ref={formRef} onSubmit={handleSubmit}>
       <div className="grid">
         <label>
           Amount (₹)
