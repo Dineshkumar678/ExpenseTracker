@@ -15,7 +15,9 @@ A minimal, production-quality full-stack Expense Tracker built with Next.js API 
 - Filter by category
 - Sort by date (newest first)
 - Total for the current list
+- Summary by category (based on the current list)
 - Retry-safe POSTs via idempotency keys
+- Basic validation and loading/error states in the UI
 
 ## Design Decisions
 - **Money handling:** stored as integer paise (`amountPaise`) to avoid floating-point errors.
@@ -36,7 +38,7 @@ A minimal, production-quality full-stack Expense Tracker built with Next.js API 
 ```
 **Behavior**
 - Validates inputs
-- Converts amount → cents
+- Converts amount → paise
 - Returns existing record if the idempotency key already exists
 
 ### GET `/api/expenses`
@@ -58,10 +60,13 @@ npm run dev
 
 Open `http://localhost:3000`.
 
+## Tests
+```bash
+npm run test
+```
+
 ## Trade-offs
 - No auth or multi-user support (out of scope).
-- No automated tests due to time constraints.
 
 ## What Was Skipped (Intentional)
-- Category summary panel
-- Automated tests (would add Jest + Prisma test DB)
+- End-to-end tests (would add Playwright)
