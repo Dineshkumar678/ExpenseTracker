@@ -10,10 +10,11 @@ type FiltersProps = {
   categories: string[];
   filters: FiltersState;
   totalPaise: number;
+  disabled?: boolean;
   onChange: (filters: FiltersState) => void;
 };
 
-export default function Filters({ categories, filters, totalPaise, onChange }: FiltersProps) {
+export default function Filters({ categories, filters, totalPaise, disabled, onChange }: FiltersProps) {
   return (
     <div className="toolbar">
       <div>
@@ -21,6 +22,7 @@ export default function Filters({ categories, filters, totalPaise, onChange }: F
           Filter by category
           <select
             value={filters.category}
+            disabled={disabled}
             onChange={(event) => onChange({ ...filters, category: event.target.value })}
           >
             <option value="">All</option>
@@ -37,6 +39,7 @@ export default function Filters({ categories, filters, totalPaise, onChange }: F
           Sort by date
           <select
             value={filters.sort}
+            disabled={disabled}
             onChange={(event) => onChange({ ...filters, sort: event.target.value as FiltersState['sort'] })}
           >
             <option value="date_desc">Newest first</option>
