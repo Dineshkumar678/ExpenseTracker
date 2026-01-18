@@ -2,6 +2,9 @@
 
 A minimal, production-quality full-stack Expense Tracker built with Next.js API routes, PostgreSQL, and Prisma.
 
+## Project Overview
+This app lets a user record expenses and review them with filters, sorting, totals, and a summary by category. It is designed to behave correctly under real-world conditions like retries, page refreshes, and slow networks.
+
 ## Tech Stack
 - **Frontend:** Next.js (App Router)
 - **Backend:** Next.js API routes
@@ -19,10 +22,27 @@ A minimal, production-quality full-stack Expense Tracker built with Next.js API 
 - Retry-safe POSTs via idempotency keys
 - Basic validation and loading/error states in the UI
 
+## How It Works
+- **Frontend** posts expenses to `/api/expenses` and renders the list.
+- **Backend** validates input, converts money to paise, and writes to PostgreSQL.
+- **Idempotency** prevents duplicate expenses when a user retries the same request.
+
+## Project Structure
+- `app/page.tsx`: main page and data flow
+- `app/components/ExpenseForm.tsx`: create form + retry-safe messaging
+- `app/components/ExpenseList.tsx`: list/table view
+- `app/components/Filters.tsx`: category and sort controls
+- `app/components/Summary.tsx`: total per category
+- `app/api/expenses/route.ts`: POST/GET API handlers
+- `lib/db.ts`: money/date parsing utilities
+- `lib/prisma.ts`: Prisma client setup
+- `prisma/schema.prisma`: data model
+
 ## Design Decisions
 - **Money handling:** stored as integer paise (`amountPaise`) to avoid floating-point errors.
 - **Idempotency:** unique `idempotencyKey` on every POST to ensure retries don’t create duplicates.
 - **Dates:** normalized to UTC date boundaries to avoid timezone drift.
+- **Persistence choice:** PostgreSQL with Prisma for reliable storage, strong consistency, and safe concurrent writes.
 
 ## API
 ### POST `/api/expenses`
@@ -65,8 +85,11 @@ Open `http://localhost:3000`.
 npm run test
 ```
 
-## Trade-offs
-- No auth or multi-user support (out of scope).
+## Troubleshooting
+- **Database connection errors:** verify `DATABASE_URL` and that your DB allows inbound connections.
+- **Prisma table missing:** run `npm run prisma:migrate`.
+- **Module not found for `@/*`:** ensure `tsconfig.json` has the path alias configured.
 
-## What Was Skipped (Intentional)
-- End-to-end tests (would add Playwright)
+## Trade-offs
+- No auth or multi-user support due to the timebox.
+- No end-to-end tests; focused on core correctness and small unit tests.

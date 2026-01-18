@@ -1,6 +1,7 @@
 'use client';
 
 import { useRef, useState } from 'react';
+import { formatSubmitErrorMessage } from './expenseFormUtils';
 
 type ExpenseFormProps = {
   onCreated: () => Promise<void>;
@@ -94,12 +95,9 @@ export default function ExpenseForm({ onCreated }: ExpenseFormProps) {
 
       if (!response.ok) {
         const errorBody = await response.json().catch(() => ({}));
-        const message = typeof errorBody.error === 'string' ? errorBody.error : 'Failed to save expense.';
-        const retryable = response.status >= 500 || response.status === 429;
-        const retryNote = retryable
-          ? ' You can retry safely without creating a duplicate.'
-          : '';
-        throw new Error(`${message}${retryNote}`);
+        const apiMessage = typeof errorBody.error === 'string' ? errorBody.error : undefined;
+        const formatted = formatSubmitErrorMessage({ status: response.status, apiMessage });
+        throw new Error(formatted);
       }
 
       clearPendingKey();
@@ -107,11 +105,12 @@ export default function ExpenseForm({ onCreated }: ExpenseFormProps) {
       setStatus('Expense saved.');
       await onCreated();
     } catch (err) {
-      if (err instanceof TypeError) {
-        setError('Network error. You can retry safely without creating a duplicate.');
-        return;
-      }
-      setError(err instanceof Error ? err.message : 'Failed to save expense.');
+      const isNetworkError = err instanceof TypeError;
+      const message = formatSubmitErrorMessage({
+        isNetworkError,
+        apiMessage: err instanceof Error ? err.message : undefined,
+      });
+      setError(message);
     } finally {
       setLoading(false);
     }

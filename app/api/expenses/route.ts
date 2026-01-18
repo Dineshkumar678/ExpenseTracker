@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { parseAmountToPaise, normalizeDate, sanitizeText, formatAmountFromPaise } from '@/lib/db';
+import { mapPrismaError } from '@/lib/apiErrors';
 
 export async function POST(request: NextRequest) {
   let idempotencyKey: string | undefined;
@@ -103,9 +104,6 @@ function serializeExpense(expense: {
 async function handleApiError(error: unknown, context?: { idempotencyKey?: string }) {
   if (error && typeof error === 'object') {
     const maybeError = error as { code?: string; message?: string; meta?: { target?: string[] } };
-    if (maybeError.code === 'P1001') {
-      return NextResponse.json({ error: 'Database unavailable. Please try again.' }, { status: 503 });
-    }
     if (maybeError.code === 'P2002') {
       const target = Array.isArray(maybeError.meta?.target) ? maybeError.meta?.target : [];
       if (target.includes('idempotencyKey') && context?.idempotencyKey) {
@@ -116,14 +114,12 @@ async function handleApiError(error: unknown, context?: { idempotencyKey?: strin
           return NextResponse.json(serializeExpense(existing), { status: 200 });
         }
       }
-      return NextResponse.json({ error: 'Duplicate request.' }, { status: 409 });
     }
-    if (maybeError.code === 'P2003') {
-      return NextResponse.json({ error: 'Invalid data reference.' }, { status: 400 });
-    }
-    if (maybeError.code === 'P2025') {
-      return NextResponse.json({ error: 'Record not found.' }, { status: 404 });
-    }
+  }
+
+  const mapped = mapPrismaError(error);
+  if (mapped) {
+    return NextResponse.json({ error: mapped.message }, { status: mapped.status });
   }
 
   const message = error instanceof Error ? error.message : 'Unexpected server error.';
