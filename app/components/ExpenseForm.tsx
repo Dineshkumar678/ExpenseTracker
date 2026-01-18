@@ -94,7 +94,12 @@ export default function ExpenseForm({ onCreated }: ExpenseFormProps) {
 
       if (!response.ok) {
         const errorBody = await response.json().catch(() => ({}));
-        throw new Error(errorBody.error || 'Failed to save expense.');
+        const message = typeof errorBody.error === 'string' ? errorBody.error : 'Failed to save expense.';
+        const retryable = response.status >= 500 || response.status === 429;
+        const retryNote = retryable
+          ? ' You can retry safely without creating a duplicate.'
+          : '';
+        throw new Error(`${message}${retryNote}`);
       }
 
       clearPendingKey();
@@ -102,6 +107,10 @@ export default function ExpenseForm({ onCreated }: ExpenseFormProps) {
       setStatus('Expense saved.');
       await onCreated();
     } catch (err) {
+      if (err instanceof TypeError) {
+        setError('Network error. You can retry safely without creating a duplicate.');
+        return;
+      }
       setError(err instanceof Error ? err.message : 'Failed to save expense.');
     } finally {
       setLoading(false);
