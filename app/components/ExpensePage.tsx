@@ -1,0 +1,112 @@
+'use client';
+
+import { useEffect, useMemo, useState } from 'react';
+import ExpenseForm from './ExpenseForm';
+import Filters from './Filters';
+import ExpenseList from './ExpenseList';
+
+export type Expense = {
+  id: string;
+  idempotencyKey: string;
+  amount: string;
+  amountPaise: number;
+  category: string;
+  description: string;
+  date: string;
+  createdAt: string;
+};
+
+export type FiltersState = {
+  category: string;
+  sort: 'date_desc' | 'none';
+};
+
+const defaultFilters: FiltersState = {
+  category: '',
+  sort: 'date_desc',
+};
+
+export default function ExpensePage() {
+  const [expenses, setExpenses] = useState<Expense[]>([]);
+  const [filters, setFilters] = useState<FiltersState>(defaultFilters);
+  const [status, setStatus] = useState('');
+  const [error, setError] = useState('');
+
+  const categories = useMemo(() => {
+    const set = new Set(expenses.map((expense) => expense.category));
+    return Array.from(set).sort();
+  }, [expenses]);
+
+  const filteredExpenses = useMemo(() => {
+    if (!filters.category) {
+      return expenses;
+    }
+    return expenses.filter((expense) => expense.category === filters.category);
+  }, [expenses, filters.category]);
+
+  const totalPaise = filteredExpenses.reduce((sum, expense) => sum + expense.amountPaise, 0);
+
+  async function fetchExpenses(nextFilters = filters) {
+    setStatus('Loading expenses...');
+    setError('');
+    const params = new URLSearchParams();
+    if (nextFilters.category) {
+      params.set('category', nextFilters.category);
+    }
+    if (nextFilters.sort === 'date_desc') {
+      params.set('sort', 'date_desc');
+    }
+
+    const response = await fetch(`/api/expenses?${params.toString()}`);
+    if (!response.ok) {
+      setError('Unable to load expenses. Please refresh.');
+      setStatus('');
+      return;
+    }
+
+    const data = (await response.json()) as Expense[];
+    setExpenses(data);
+    setStatus(data.length ? '' : 'No expenses to display.');
+  }
+
+  useEffect(() => {
+    fetchExpenses();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  async function handleFiltersChange(nextFilters: FiltersState) {
+    setFilters(nextFilters);
+    await fetchExpenses(nextFilters);
+  }
+
+  async function handleCreated() {
+    await fetchExpenses(filters);
+  }
+
+  return (
+    <main className="container">
+      <header>
+        <h1>Expense Tracker</h1>
+        <p className="subtitle">Track your personal expenses with confidence.</p>
+      </header>
+
+      <section className="card">
+        <h2>Add Expense</h2>
+        <ExpenseForm onCreated={handleCreated} />
+      </section>
+
+      <section className="card">
+        <Filters
+          categories={categories}
+          filters={filters}
+          onChange={handleFiltersChange}
+          totalPaise={totalPaise}
+        />
+        <div className="status" style={{ color: error ? '#d64545' : '#52606d' }}>
+          {error || status}
+        </div>
+        <ExpenseList expenses={filteredExpenses} />
+      </section>
+    </main>
+  );
+}
